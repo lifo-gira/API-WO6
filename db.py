@@ -2,7 +2,7 @@ from motor import motor_asyncio
 
 from models import *
 
-client = motor_asyncio.AsyncIOMotorClient("mongodb+srv://lifogira:passwordPassword@main.zcij1ne.mongodb.net/?retryWrites=true&w=majority")
+client = motor_asyncio.AsyncIOMotorClient("mongodb+srv://wadfirm2023:wadfirm2023@wadco.o2m22gs.mongodb.net/?retryWrites=true&w=majority")
 db = client.Main
 users = db.users
 metrics = db.metrics
