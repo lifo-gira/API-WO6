@@ -36,19 +36,28 @@ def root():
 #         data = await websocket.receive_text()
 #         await websocket.send_text(f"You sent: {data}")
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@app.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await websocket.accept()
-    websocket_list.append(websocket)
+    websocket_list.append((user_id, websocket))
+
     try:
         while True:
             data = await websocket.receive_text()
-            await websocket.send_text(f"You sent: {data}")
+            await broadcast_message(user_id, f"You sent: {data}")
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        print(f"WebSocket error for user {user_id}: {e}")
     finally:
-        if websocket in websocket_list:
-            websocket_list.remove(websocket)
+        remove_websocket(user_id, websocket)
+
+async def broadcast_message(sender_user_id, message):
+    for user_id, ws in websocket_list:
+        if user_id != sender_user_id:
+            await ws.send_text(message)
+
+def remove_websocket(user_id, websocket):
+    websocket_list.remove((user_id, websocket))
+
 
 
 @app.post("/post-data/{data}")
@@ -96,12 +105,19 @@ async def getUsers(type: Literal["admin", "doctor", "patient"], id: str):
     return res
 
 @app.post("/post-data")
-async def addData(user_id: str,data: Data):
+async def addData(user_id: str, data: Data):
     res = await db.postData(user_id=user_id, data=data)
-    for web in websocket_list:
-        data_json = json.dumps(data.dict())
-        await web.send_text(data_json)
-        return{"dataCreated": res}
+    
+    # Convert the data to a JSON string
+    data_json = json.dumps(data.dict())
+
+    # Iterate over each WebSocket in websocket_list
+    for uid, websocket in websocket_list:
+        if uid == user_id:
+            # Send the data only to the user who posted it
+            await websocket.send_text(data_json)
+
+    return {"dataCreated": res}
 
 @app.put("/put-data")
 async def addData( data: Data):
