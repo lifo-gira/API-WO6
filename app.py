@@ -1,11 +1,17 @@
-from fastapi import FastAPI, WebSocket
-from typing import Literal
+from fastapi import FastAPI, WebSocket, HTTPException, Request, Depends
+from typing import Literal, Optional
 from fastapi.middleware.cors import CORSMiddleware
 from models import Admin, Doctor, Patient, Data
 import db
-from models import ConnectionManager, WebSocketManager
-from db import get_user_from_db,metrics
+from models import ConnectionManager, WebSocketManager, GoogleOAuthCallback,DeleteRequest
+from db import get_user_from_db,metrics,deleteData
 import json
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from authlib.integrations.starlette_client import OAuth
+from datetime import datetime
+
 
 
 app = FastAPI()
@@ -20,6 +26,51 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Jinja2 templates configuration
+templates = Jinja2Templates(directory="templates")
+
+# Initialize OAuth instance
+oauth = OAuth()
+
+# OAuth configuration for Google
+oauth.register(
+    name='google',
+    client_id='94330389608-e14ildo3ntq6l76np77dv6l98akv1kkp.apps.googleusercontent.com',
+    client_secret='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',
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    authorize_params=None,
+    authorize_prompt_params=None,
+    authorize_prompt_template=None,
+    token_url='https://accounts.google.com/o/oauth2/token',
+    redirect_uri='https://localhost:3000/diagnostics'
+)
+
+# OAuth configuration for LinkedIn
+oauth.register(
+    name='linkedin',
+    client_id='YOUR_LINKEDIN_CLIENT_ID',
+    client_secret='YOUR_LINKEDIN_CLIENT_SECRET',
+    authorize_url='https://www.linkedin.com/oauth/v2/authorization',
+    authorize_params=None,
+    authorize_prompt_params=None,
+    authorize_prompt_template=None,
+    token_url='https://www.linkedin.com/oauth/v2/accessToken',
+    redirect_uri='YOUR_LINKEDIN_REDIRECT_URI'
+)
+
+# OAuth configuration for Facebook
+oauth.register(
+    name='facebook',
+    client_id='YOUR_FACEBOOK_APP_ID',
+    client_secret='YOUR_FACEBOOK_APP_SECRET',
+    authorize_url='https://www.facebook.com/v12.0/dialog/oauth',
+    authorize_params=None,
+    authorize_prompt_params=None,
+    authorize_prompt_template=None,
+    token_url='https://graph.facebook.com/v12.0/oauth/access_token',
+    redirect_uri='YOUR_FACEBOOK_REDIRECT_URI'
 )
 
 
@@ -61,12 +112,27 @@ def remove_websocket(user_id, websocket):
 
 
 @app.post("/post-data/{data}")
-def postData(data):
+def postData(data: str):
     try:
-        storedData.append(data)
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        data_with_timestamp = f"{current_datetime}: {data}"
+        storedData.append(data_with_timestamp)
         return {"inserted": "true"}
-    except:
-        return {"inserted": "false"}
+    except Exception as e:
+        return {"inserted": "false", "error": str(e)}
+
+
+@app.delete("/delete-data")
+async def delete_data(request: DeleteRequest):
+    try:
+        result = await deleteData(request)
+        if result["deleted"]:
+            return {"message": "Data deleted successfully"}
+        else:
+            raise HTTPException(status_code=400, detail=f"Failed to delete data: {result['error']}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 
 @app.get("/get-all-data")
 def getData():
@@ -88,11 +154,50 @@ async def createPatient(data: Patient):
     res = await db.createPatient(data=data)
     return{"userCreated": res}
 
+@app.post("/google-login")
+async def google_login(data: GoogleOAuthCallback):
+    try:
+        # Check if the user already exists in the database based on the email address
+        existing_patient = await db.users.find_one({"email": data.email})
+        if existing_patient:
+            # If the user already exists, you can return an error or handle it as needed
+            return {"message": "Login successful"}
+        else:
+            # If the user doesn't exist, return an error or handle it as needed
+            raise HTTPException(status_code=401, detail="Unauthorized: User not found")
+        # If the user doesn't exist, create a new patient record
+        # res = await db.createPatient(data=data)
+        # return {"userCreated": res}
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
 @app.post("/login")
-async def initiateLogin(user_id: str, password: str):
-    res = await db.loginUser(user_id, password) 
-    if res["loginStatus"] == True:
+async def initiate_login(user_id: str, password: str, provider: Optional[str] = None):
+    if provider:  # Social media login
+        if provider not in ["google", "linkedin", "facebook"]:
+            raise HTTPException(status_code=400, detail="Invalid social media provider")
+        print(res["data"])
+        # Redirect the user to the social media login endpoint
         return res["data"]
+
+    # Traditional username/password login logic
+    res = await db.loginUser(user_id, password)
+    if res["loginStatus"]:
+        return res["data"]
+    else:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+@app.route("/login/{provider}/callback")
+async def social_media_callback(request: Request, provider: str):
+    token = await oauth.create_client(provider).authorize_access_token(request)
+    user_info = await oauth.create_client(provider).parse_id_token(request, token)
+    # Handle user information obtained from the OAuth provider (e.g., store in database, generate JWT token)
+    # ...
+
+    # For demonstration purposes, render a template with user information
+    return templates.TemplateResponse("social_media_callback.html", {"request": request, "user_info": user_info})
 
 @app.get("/get-all-user/{type}")
 async def getUsers(type: Literal["admin", "doctor", "patient", "all"]):
@@ -128,7 +233,5 @@ async def addData( data: Data):
 async def getData(data_id: list):
     res = await db.getData(data_id)
     return res
-
-
 
 

@@ -1,5 +1,6 @@
 from motor import motor_asyncio
-
+from datetime import datetime
+from bson import ObjectId
 from models import *
 
 client = motor_asyncio.AsyncIOMotorClient("mongodb+srv://wadfirm2023:wadfirm2023@wadco.o2m22gs.mongodb.net/?retryWrites=true&w=majority")
@@ -43,12 +44,21 @@ async def createDoctor(data: Doctor):
     except:
         return False
     
-async def createPatient(data: Patient):
+# async def createPatient(data: Patient):
+#     try:
+#         await users.insert_one(dict(data))
+#         return True
+#     except:
+#         return False
+
+async def createPatient(data: GoogleOAuthCallback):
     try:
+        # Insert patient data and Google sign-in data into the database
         await users.insert_one(dict(data))
         return True
-    except:
-        return False
+    except Exception as e:  
+        print(f"Error inserting data: {e}")
+        return False 
     
 async def loginUser(user_id, password):
     user = {"data": {}, "loginStatus": False}
@@ -62,9 +72,12 @@ async def loginUser(user_id, password):
     finally:
         return user
     
-async def postData( user_id: str, data: Data):
+async def postData(user_id: str, data: Data):
     try:
-        await metrics.insert_one(dict(data))
+        data.created_date = datetime.now().strftime('%Y-%m-%d')
+        data.created_time = datetime.now().strftime('%H:%M:%S')
+        
+        await metrics.insert_one(data.dict())  # Convert data object to dictionary
         res = await users.find_one({"user_id": user_id, "type": "patient"})
         res = dict(res)
         res["data"].append(data.data_id)
@@ -97,3 +110,75 @@ async def get_user_from_db(type: str, user_id: str) -> Patient:
     if user_data:
         return Patient(**user_data)
     return None
+
+async def deleteData(request: DeleteRequest):
+    try:
+        # Convert start_date and end_date to datetime objects for comparison
+        start_datetime = datetime.strptime(f"{request.start_date} {request.start_time}", "%Y-%m-%d %H:%M:%S")
+        end_datetime = datetime.strptime(f"{request.end_date} {request.end_time}", "%Y-%m-%d %H:%M:%S")
+
+        # Define the query for documents with the same device_id, created_date, and created_time within the specified range
+        query = {
+            "device_id": request.device_id,
+            "$and": [
+                {
+                    "$or": [
+                        {
+                            "created_date": {
+                                "$gt": start_datetime.strftime("%Y-%m-%d"),
+                                "$lt": end_datetime.strftime("%Y-%m-%d")
+                            }
+                        },
+                        {
+                            "$and": [
+                                {"created_date": start_datetime.strftime("%Y-%m-%d")},
+                                {"created_time": {"$gte": request.start_time}}
+                            ]
+                        },
+                        {
+                            "$and": [
+                                {"created_date": end_datetime.strftime("%Y-%m-%d")},
+                                {"created_time": {"$lte": request.end_time}}
+                            ]
+                        },
+                    ]
+                },
+                {
+                    "$or": [
+                        {
+                            "$and": [
+                                {"created_date": start_datetime.strftime("%Y-%m-%d")},
+                                {"created_time": {"$gte": request.start_time}}
+                            ]
+                        },
+                        {
+                            "$and": [
+                                {"created_date": end_datetime.strftime("%Y-%m-%d")},
+                                {"created_time": {"$lte": request.end_time}}
+                            ]
+                        },
+                        {
+                            "created_date": {
+                                "$lt": end_datetime.strftime("%Y-%m-%d"),
+                                "$gt": start_datetime.strftime("%Y-%m-%d")
+                            }
+                        },
+                    ]
+                }
+            ]
+        }
+
+        # Perform deletion
+        result = await metrics.delete_many(query)
+
+        if result.deleted_count > 0:
+            await users.update_one(
+                {"device_id": request.device_id, "type": "sensor"},
+                {"$pull": {"data": {"$in": [str(doc["_id"]) for doc in result.deleted_ids]}}}
+            )
+
+            return {"deleted": True, "count": result.deleted_count}
+        else:
+            return {"deleted": False, "error": "No matching documents found to delete"}
+    except Exception as e:
+        return {"deleted": False, "error": str(e)}
