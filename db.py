@@ -119,43 +119,25 @@ async def deleteData(request: DeleteRequest):
 
         # Define the query for documents with the same device_id, created_date, and created_time within the specified range
         query = {
-    "device_id": request.device_id,
-    "$or": [
-        {
-            "$and": [
-                {"created_date": {"$gt": start_datetime.strftime("%Y-%m-%d")}},
-                {"created_date": {"$lt": end_datetime.strftime("%Y-%m-%d")}}
-            ]
-        },
-        {
-            "$and": [
-                {"created_date": start_datetime.strftime("%Y-%m-%d")},
-                {"created_time": {"$gte": request.start_time}}
-            ]
-        },
-        {
-            "$and": [
-                {"created_date": end_datetime.strftime("%Y-%m-%d")},
-                {"created_time": {"$lte": request.end_time}}
-            ]
-        },
-        {
-            "$and": [
-                {"created_date": {"$lt": end_datetime.strftime("%Y-%m-%d")}},
-                {"created_date": {"$gt": start_datetime.strftime("%Y-%m-%d")}}
-            ]
-        },
-    ]
-}
-
+            "device_id": request.device_id,
+            "created_date": {
+                "$gte": start_datetime.strftime("%Y-%m-%d"),
+                "$lte": end_datetime.strftime("%Y-%m-%d")
+            },
+            "created_time": {
+                "$gte": request.start_time,
+                "$lte": request.end_time
+            }
+        }
 
         # Perform deletion
         result = await metrics.delete_many(query)
+
         if result.deleted_count > 0:
-            # await users.update_one(
-            #     {"device_id": request.device_id, "type": "sensor"},
-            #     {"$pull": {"data": {"$in": [str(doc["_id"]) for doc in result.deleted_ids]}}}
-            # )
+            await users.update_one(
+                {"device_id": request.device_id, "type": "sensor"},
+                {"$pull": {"data": {"$in": [str(doc["_id"]) for doc in result.deleted_ids]}}}
+            )
 
             return {"deleted": True, "count": result.deleted_count}
         else:
