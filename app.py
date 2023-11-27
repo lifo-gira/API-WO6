@@ -10,7 +10,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from authlib.integrations.starlette_client import OAuth
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 
@@ -114,8 +114,9 @@ def remove_websocket(user_id, websocket):
 @app.post("/post-data/{data}")
 def postData(data: str):
     try:
-        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        data_with_timestamp = f"{current_datetime}: {data}"
+        # Get current date and time in IST
+        current_datetime_ist = datetime.now().astimezone(timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+        data_with_timestamp = f"{current_datetime_ist}: {data}"
         storedData.append(data_with_timestamp)
         return {"inserted": "true"}
     except Exception as e:

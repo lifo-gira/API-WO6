@@ -74,13 +74,18 @@ async def loginUser(user_id, password):
     
 async def postData(user_id: str, data: Data):
     try:
-        data.created_date = datetime.now().strftime('%Y-%m-%d')
-        data.created_time = datetime.now().strftime('%H:%M:%S')
-        
+        # Set the created_date and created_time to IST
+        ist_now = datetime.now(pytz.timezone('Asia/Kolkata'))
+        data.created_date = ist_now.strftime('%Y-%m-%d')
+        data.created_time = ist_now.strftime('%H:%M:%S')
+
+        # Data object will have default values for created_date and created_time in IST
         await metrics.insert_one(data.dict())  # Convert data object to dictionary
+
         res = await users.find_one({"user_id": user_id, "type": "patient"})
         res = dict(res)
         res["data"].append(data.data_id)
+        
         await users.update_one({"user_id": user_id, "type": "patient"}, {"$set": res})
         return True
     except Exception as e:
@@ -138,7 +143,7 @@ async def deleteData(request: DeleteRequest):
                 {"device_id": request.device_id, "type": "sensor"},
                 {"$pull": {"data": {"$in": [str(doc["_id"]) for doc in result.deleted_ids]}}}
             )
-
+            
             return {"deleted": True, "count": result.deleted_count}
         else:
             return {"deleted": False, "error": "No matching documents found to delete"}

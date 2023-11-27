@@ -2,6 +2,7 @@ from fastapi import FastAPI, WebSocket
 from pydantic import BaseModel, EmailStr, Field, HttpUrl, validator
 from typing import Literal, Optional, List
 from datetime import datetime
+import pytz
 
 class Admin(BaseModel):
     type: Literal["admin", "doctor", "patient"]
@@ -104,13 +105,12 @@ class DeleteRequest(BaseModel):
             }
         }
     
-
 class Data(BaseModel):
     data_id: str
     device_id: str
     series: list
-    created_date: str = datetime.now().strftime('%Y-%m-%d')
-    created_time: str = datetime.now().strftime('%H:%M:%S')
+    created_date: str = datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%Y-%m-%d')
+    created_time: str = datetime.now(pytz.timezone('Asia/Kolkata')).strftime('%H:%M:%S')
 
     class Config:
         schema_extra = {
