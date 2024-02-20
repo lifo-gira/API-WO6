@@ -1,10 +1,12 @@
 from fastapi import FastAPI, WebSocket
-from pydantic import BaseModel, EmailStr, Field, HttpUrl, validator
+from pydantic import BaseModel, EmailStr, Field, HttpUrl, validator, conint
 from typing import Literal, Optional, List
 from datetime import datetime
 import pytz
+from bson import ObjectId
 
 class Admin(BaseModel):
+    id: str = Field(..., alias="_id")
     type: Literal["admin", "doctor", "patient"]
     name: str
     user_id: str
@@ -21,6 +23,7 @@ class Admin(BaseModel):
         }
 
 class Doctor(BaseModel):
+    id: str = Field(..., alias="_id")
     type: Literal["admin", "doctor", "patient"]
     name: str
     user_id: str
@@ -39,6 +42,7 @@ class Doctor(BaseModel):
         }
 
 class Patient(BaseModel):
+    id: str = Field(..., alias="_id")
     type: Literal["admin", "doctor", "patient"]
     name: str
     user_id: str
@@ -59,6 +63,110 @@ class Patient(BaseModel):
                 "data": ["data1", "data2"],
                 "videos": [],
                 "doctor": "doctor001",
+            }
+        }
+
+class HealthCheckupDetails(BaseModel):
+    selectedDate: str
+    selectedRange: str
+
+class PatientDetails(BaseModel):
+    Accident: str
+    Gender: str
+
+class PersonalDetails(BaseModel):
+    categories: List[str]
+    healthcheckup: HealthCheckupDetails
+    PatientDetails: PatientDetails
+    Reports: List[str]
+    Height: conint(ge=0)
+    Weight: conint(ge=0)
+    BMI: conint(ge=0)
+    Age: conint(ge=0)
+
+class ExerciseDetails(BaseModel):
+    values: List[float]
+    pain: List[str]
+    rom: Optional[int]
+
+class Exercises(BaseModel):
+    running: ExerciseDetails
+    pushups: ExerciseDetails
+    squats: ExerciseDetails
+    pullups: ExerciseDetails
+    LegHipRotation: ExerciseDetails
+
+class ExercisesGiven(BaseModel):
+    running: dict
+    pushups: dict
+    squats: dict
+    pullups: dict
+
+class HealthTracker(BaseModel):
+    exercise_tracker: bool
+    meeting_link: Optional[str]
+    schedule_start_date: str
+    schedule_end_date: str
+
+class PatientInformation(BaseModel):
+    _id: str
+    user_id: str
+    patient_id: str
+    doctor_id: str
+    profession: str
+    PersonalDetails: PersonalDetails
+    Exercises: Exercises
+    exercises_given: ExercisesGiven
+    health_tracker: HealthTracker
+    PDF: str
+    doctor_assigned: str
+    flag: int
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "",
+                "patient_id": "",
+                "doctor_id": "",
+                "profession": "",
+                "PersonalDetails": {
+                    "categories": ["Category1", "Category2"],
+                    "healthcheckup": {
+                        "selectedDate": "2024-02-03",
+                        "selectedRange": "Normal",
+                    },
+                    "PatientDetails": {
+                        "Accident": "No",
+                        "Gender": "Male",
+                    },
+                    "Reports": ["Report1", "Report2"],
+                    "Height": 175,
+                    "Weight": 70,
+                    "BMI": 23,
+                    "Age": 22,
+                },
+                "Exercises": {
+                    "running": {"values": [5.0, 6.0, 7.0], "pain": ["None", "Minimal", "Moderate"], "rom": 90},
+                    "pushups": {"values": [], "pain": [], "rom": None},
+                    "squats": {"values": [], "pain": [], "rom": None},
+                    "pullups": {"values": [], "pain": [], "rom": None},
+                    "LegHipRotation": {"values": [], "pain": [], "rom": None},
+                },
+                "exercises_given": {
+                    "running": {"rep": 10, "set": 3},
+                    "pushups": {"rep": 12, "set": 3},
+                    "squats": {"rep": 15, "set": 3},
+                    "pullups": {"rep": 8, "set": 3},
+                },
+                "health_tracker": {
+                    "exercise_tracker": True,
+                    "meeting_link": "https://example.com/meeting",
+                    "schedule_start_date": "2024-02-10",
+                    "schedule_end_date": "2024-03-10",
+                },
+                "PDF": "path/to/patient_file.pdf",
+                "doctor_assigned": "DoctorName",
+                "flag": 0,
             }
         }
 

@@ -7,6 +7,9 @@ client = motor_asyncio.AsyncIOMotorClient("mongodb+srv://wadfirm2023:wadfirm2023
 db = client.Main
 users = db.users
 metrics = db.metrics
+patients = db.patients
+rooms_collection = db.rooms
+signaling_collection = db.signaling_messages
 
 async def getAllUser(type):
     try:
@@ -62,15 +65,20 @@ async def createPatient(data: GoogleOAuthCallback):
     
 async def loginUser(user_id, password):
     user = {"data": {}, "loginStatus": False}
-    res = await users.find_one({"user_id": user_id, "password": password},{'_id': 0})
-    try: 
-        user["data"] = res
-        user["loginStatus"] = True
+    try:
+        # Fetch user data including _id
+        res = await users.find_one({"user_id": user_id})
+        if res and res.get("_id"):  # Check if "_id" field exists in the response
+            res["_id"] = str(res["_id"])  # Convert ObjectId to string
+            if res["password"] == password:
+                user["data"] = res
+                user["loginStatus"] = True
     except Exception as e:
         print(e)
         user["loginStatus"] = False
     finally:
         return user
+
     
 async def postData(user_id: str, data: Data):
     try:
@@ -139,10 +147,10 @@ async def deleteData(request: DeleteRequest):
         result = await metrics.delete_many(query)
 
         if result.deleted_count > 0:
-            await users.update_one(
-                {"device_id": request.device_id, "type": "sensor"},
-                {"$pull": {"data": {"$in": [str(doc["_id"]) for doc in result.deleted_ids]}}}
-            )
+            # await users.update_one(
+            #     {"device_id": request.device_id, "type": "sensor"},
+            #     {"$pull": {"data": {"$in": [str(doc["_id"]) for doc in result.deleted_ids]}}}
+            # )
             
             return {"deleted": True, "count": result.deleted_count}
         else:
