@@ -182,16 +182,13 @@ async def initiate_login(user_id: str, password: str, provider: Optional[str] = 
     if provider:  # Social media login
         if provider not in ["google", "linkedin", "facebook"]:
             raise HTTPException(status_code=400, detail="Invalid social media provider")
-        # Redirect the user to the social media login endpoint
-        print(res["data"])  # Not sure where res is coming from, might need adjustment
+        # Redirect the user to the social media login endpoint # Not sure where res is coming from, might need adjustment
         return res["data"]  # Not sure where res is coming from, might need adjustment
 
     # Traditional username/password login logic
     res = await db.loginUser(user_id, password)
-    if res["loginStatus"]:
-        return res["data"]  # Assuming res["data"] contains user information
-    else:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+    if res["loginStatus"] == True:
+        return res["data"]
     
 @app.route("/login/{provider}/callback")
 async def social_media_callback(request: Request, provider: str):
@@ -280,6 +277,13 @@ async def update_exercise_info(patient_id: str, exercise_data: Exercises, new_fl
     )
 
     if result.modified_count > 0:
+        # Fetch the updated item from the database
+        updated_todo = await patients.find_one({"patient_id": patient_id})
+
+        # If the flag is in the range 1 to 5, send the entire updated_todo data through the WebSocket
+        if new_flag in range(-2,6):
+            await send_websocket_message(json_util.dumps(updated_todo, default=json_util.default))
+        
         return {"message": "Exercise information updated successfully"}
 
     raise HTTPException(status_code=500, detail="Failed to update exercise information")
@@ -309,7 +313,7 @@ async def update_given_exercise_info(patient_id: str, exercise_data: ExercisesGi
         updated_todo = await patients.find_one({"patient_id": patient_id})
 
         # If the flag is in the range 1 to 5, send the entire updated_todo data through the WebSocket
-        if new_flag in range(6):
+        if new_flag in range(-2,6):
             await send_websocket_message(json_util.dumps(updated_todo, default=json_util.default))
         
         return {"message": "Exercise information updated successfully"}
@@ -343,7 +347,7 @@ async def update_flag(patient_id: str, new_flag: int, doctor_name: str, doctor_i
     updated_todo = await patients.find_one({"patient_id": patient_id})
 
     # If the flag is 1, send the entire updated_todo data through the WebSocket
-    if new_flag in range(6):
+    if new_flag in range(-2,6):
         await send_websocket_message(json_util.dumps(updated_todo, default=json_util.default))
 
     # You can return the updated item if needed

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket
-from pydantic import BaseModel, EmailStr, Field, HttpUrl, validator, conint
+from pydantic import BaseModel, EmailStr, Field, HttpUrl, validator, conint, confloat
 from typing import Literal, Optional, List
 from datetime import datetime
 import pytz
@@ -68,7 +68,6 @@ class Patient(BaseModel):
 
 class HealthCheckupDetails(BaseModel):
     selectedDate: str
-    selectedRange: str
 
 class PatientDetails(BaseModel):
     Accident: str
@@ -79,10 +78,10 @@ class PersonalDetails(BaseModel):
     healthcheckup: HealthCheckupDetails
     PatientDetails: PatientDetails
     Reports: List[str]
-    Height: conint(ge=0)
-    Weight: conint(ge=0)
-    BMI: conint(ge=0)
-    Age: conint(ge=0)
+    Height: float
+    Weight: float
+    BMI: float
+    Age: int
 
 class ExerciseDetails(BaseModel):
     values: List[float]
@@ -133,7 +132,6 @@ class PatientInformation(BaseModel):
                     "categories": ["Category1", "Category2"],
                     "healthcheckup": {
                         "selectedDate": "2024-02-03",
-                        "selectedRange": "Normal",
                     },
                     "PatientDetails": {
                         "Accident": "No",
