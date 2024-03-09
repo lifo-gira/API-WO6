@@ -83,23 +83,18 @@ class PersonalDetails(BaseModel):
     BMI: float
     Age: int
 
-class ExerciseDetails(BaseModel):
+class Exercise(BaseModel):
+    name: str
     values: List[float]
     pain: List[str]
     rom: Optional[int]
 
+# Define your Exercises model
 class Exercises(BaseModel):
-    running: ExerciseDetails
-    pushups: ExerciseDetails
-    squats: ExerciseDetails
-    pullups: ExerciseDetails
-    LegHipRotation: ExerciseDetails
+    data: List[Exercise]
 
 class ExercisesGiven(BaseModel):
-    running: dict
-    pushups: dict
-    squats: dict
-    pullups: dict
+    data: List[dict]
 
 class HealthTracker(BaseModel):
     exercise_tracker: bool
