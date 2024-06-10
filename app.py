@@ -19,9 +19,9 @@ import asyncio
 app = FastAPI()
 manager = ConnectionManager()
 
-storedData = []
+storedData = {}
 websocket_list = {}
-websocket_connections = []
+websocket_connections = {}
 
 app.add_middleware(
     CORSMiddleware,
