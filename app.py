@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, HTTPException, Request, Depends, WebSocketDisconnect, BackgroundTasks
+from fastapi import FastAPI, WebSocket, HTTPException, Request, Depends, WebSocketDisconnect
 from typing import Literal, Optional, List
 from fastapi.middleware.cors import CORSMiddleware
 from models import Admin, Doctor, Patient, Data
@@ -14,14 +14,14 @@ from datetime import datetime, timezone
 from fastapi.encoders import jsonable_encoder
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import json_util,ObjectId
-
+import asyncio
 
 app = FastAPI()
 manager = ConnectionManager()
 
-storedData = {}
-websocket_list={}
-websocket_connections = {}
+storedData = []
+websocket_list = {}
+websocket_connections = []
 
 app.add_middleware(
     CORSMiddleware,
@@ -90,31 +90,6 @@ def root():
 #         data = await websocket.receive_text()
 #         await websocket.send_text(f"You sent: {data}")
 
-# @app.websocket("/ws/{user_id}")
-# async def websocket_endpoint(websocket: WebSocket, user_id: str):
-#     await websocket.accept()
-#     websocket_list.append((user_id, websocket))
-
-#     try:
-#         while True:
-#             data = await websocket.receive_text()
-#             await broadcast_message(user_id, f"You sent: {data}")
-#     except Exception as e:
-#         print(f"WebSocket error for user {user_id}: {e}")
-#     finally:
-#         remove_websocket(user_id, websocket)
-
-# async def broadcast_message(sender_user_id, message):
-#     for user_id, ws in websocket_list:
-#         if user_id != sender_user_id:
-#             await ws.send_text(message)
-
-# def remove_websocket(user_id, websocket):
-#     websocket_list.remove((user_id, websocket))
-
-async def handle_message(user_id, message, background_tasks: BackgroundTasks):
-    background_tasks.add_task(broadcast_message, user_id, message)
-
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await websocket.accept()
@@ -123,7 +98,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     try:
         while True:
             data = await websocket.receive_text()
-            await handle_message(user_id, f"You sent: {data}", background_tasks=BackgroundTasks())
+            await broadcast_message(user_id, f"You sent: {data}")
     except Exception as e:
         print(f"WebSocket error for user {user_id}: {e}")
     finally:
@@ -132,7 +107,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
 async def broadcast_message(sender_user_id, message):
     for user_id, ws in websocket_list.items():
         if user_id != sender_user_id:
-            await ws.send_text(message)
+            try:
+                await ws.send_text(message)
+            except Exception as e:
+                print(f"Error sending message to user {user_id}: {e}")
 
 def remove_websocket(user_id):
     if user_id in websocket_list:
@@ -236,16 +214,22 @@ async def getUsers(type: Literal["admin", "doctor", "patient"], id: str):
 
 @app.post("/post-data")
 async def addData(user_id: str, data: Data):
+    # Simulate data storage operation
     res = await db.postData(user_id=user_id, data=data)
-    
-    # Convert the data to a JSON string
+
+    # Convert the data to a JSON string once
     data_json = json.dumps(data.dict())
 
-    # Iterate over each WebSocket in websocket_list
-    for uid, websocket in websocket_list:
-        if uid == user_id:
-            # Send the data only to the user who posted it
-            await websocket.send_text(data_json)
+    # List to collect tasks for sending messages
+    send_tasks = []
+
+    # Create a send task for the user's WebSocket
+    websocket = websocket_list.get(user_id)
+    if websocket:
+        send_tasks.append(websocket.send_text(data_json))
+
+    # Use asyncio.gather to send all messages concurrently
+    await asyncio.gather(*send_tasks)
 
     return {"dataCreated": res}
 
