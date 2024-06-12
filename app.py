@@ -258,31 +258,39 @@ async def getUsers(type: Literal["admin", "doctor", "patient"], id: str):
     res = await db.getUser(type, id)
     return res
 
+# @app.post("/post-data")
+# async def addData(user_id: str, data: Data):
+#     # Simulate data storage operation
+#     try:
+#         res = await db.postData(user_id=user_id, data=data)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error storing data: {e}")
+
+#     # Convert the data to a JSON string once
+#     data_json = json.dumps(data.dict())
+
+#     async with lock:
+#         websocket = websocket_list.get(user_id)
+#         if websocket:
+#             try:
+#                 await send_message_with_ack(user_id, websocket, data_json)
+#             except Exception as e:
+#                 print(f"Error sending data to user {user_id}: {e}")
+#         else:
+#             # Store the message if the user is not currently connected
+#             if user_id not in pending_messages:
+#                 pending_messages[user_id] = []
+#             pending_messages[user_id].append(data_json)
+
+#     return {"dataCreated": res}
+
 @app.post("/post-data")
-async def addData(user_id: str, data: Data):
-    # Simulate data storage operation
-    try:
-        res = await db.postData(user_id=user_id, data=data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error storing data: {e}")
-
-    # Convert the data to a JSON string once
-    data_json = json.dumps(data.dict())
-
-    async with lock:
-        websocket = websocket_list.get(user_id)
-        if websocket:
-            try:
-                await send_message_with_ack(user_id, websocket, data_json)
-            except Exception as e:
-                print(f"Error sending data to user {user_id}: {e}")
-        else:
-            # Store the message if the user is not currently connected
-            if user_id not in pending_messages:
-                pending_messages[user_id] = []
-            pending_messages[user_id].append(data_json)
-
-    return {"dataCreated": res}
+async def addData(user_id: str,data: Data):
+    res = await db.postData(user_id=user_id, data=data)
+    for web in websocket_list:
+        data_json = json.dumps(data.dict())
+        await web.send_text(data_json)
+        return{"dataCreated": res}
 
 @app.put("/put-data")
 async def addData( data: Data):
