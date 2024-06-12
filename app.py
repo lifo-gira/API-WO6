@@ -263,9 +263,7 @@ async def addData(user_id: str, data: Data):
     # Simulate data storage operation
     try:
         res = await db.postData(user_id=user_id, data=data)
-        print(f"Data stored for user {user_id}: {res}")
     except Exception as e:
-        print(f"Error storing data for user {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error storing data: {e}")
 
     # Convert the data to a JSON string once
@@ -273,15 +271,12 @@ async def addData(user_id: str, data: Data):
 
     async with lock:
         websocket = websocket_list.get(user_id)
-        if websocket and not websocket.closed:
+        if websocket:
             try:
                 await send_message_with_ack(user_id, websocket, data_json)
-                print(f"Sent data to user {user_id} via WebSocket.")
             except Exception as e:
-                print(f"Error sending data to user {user_id} via WebSocket: {e}")
-                # Optionally, handle reconnection or other recovery steps here
+                print(f"Error sending data to user {user_id}: {e}")
         else:
-            print(f"No WebSocket found for user {user_id} or WebSocket is closed. Storing message.")
             # Store the message if the user is not currently connected
             if user_id not in pending_messages:
                 pending_messages[user_id] = []
