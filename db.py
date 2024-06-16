@@ -85,26 +85,26 @@ async def loginUser(user_id, password):
     
 async def postData(user_id: str, data: Data):
     try:
-        # Set the created_date and created_time to IST
         ist_now = datetime.now(pytz.timezone('Asia/Kolkata'))
-        data.created_date = ist_now.strftime('%Y-%m-%d')
-        data.created_time = ist_now.strftime('%H:%M:%S')
+        created_date = ist_now.strftime('%Y-%m-%d')
+        created_time = ist_now.strftime('%H:%M:%S')
 
-        # Data object will have default values for created_date and created_time in IST
-        await metrics.insert_one(data.dict())  # Convert data object to dictionary
+        await metrics.insert_one({
+            **data.dict(),
+            'created_date': created_date,
+            'created_time': created_time
+        })
 
-        # Update user document with data_id
-        res = await users.find_one({"user_id": user_id, "type": "patient"})
-        if res:
-            data_id = data.data_id  # Assuming data_id is a unique identifier
-            res["data"].append(data_id)
-            await users.update_one({"user_id": user_id, "type": "patient"}, {"$set": {"data": res["data"]}})
-            return True
-        else:
-            return False
+        await users.update_one(
+            {"user_id": user_id, "type": "patient"},
+            {"$push": {"data": data.data_id}}
+        )
+        
+        return True
     except Exception as e:
-        print(e)
+        print(f"Error in postData for user_id {user_id}: {e}")
         return False
+
 
 async def putData(data: Data):
     try:
