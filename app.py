@@ -97,24 +97,23 @@ def root():
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await websocket.accept()
+    # Add the websocket to websocket_list
     websocket_list.append((user_id, websocket))
 
     try:
+        # Keep the connection open to receive messages if needed
         while True:
-            data = await websocket.receive_text()
-            await broadcast_message(user_id, f"You sent: {data}")
+            # You can optionally handle incoming messages here
+            await asyncio.sleep(1)  # Example: keep the connection open
+
+    except asyncio.CancelledError:
+        pass
     except Exception as e:
-        print(f"WebSocket error for user {user_id}: {e}")
+        print(f"WebSocket connection error for user {user_id}: {str(e)}")
     finally:
-        remove_websocket(user_id, websocket)
-
-async def broadcast_message(sender_user_id, message):
-    for user_id, ws in websocket_list:
-        if user_id != sender_user_id:
-            await ws.send_text(message)
-
-def remove_websocket(user_id, websocket):
-    websocket_list.remove((user_id, websocket))
+        # Remove the websocket from websocket_list on disconnect
+        websocket_list.remove((user_id, websocket))
+        await websocket.close()
 
 @app.post("/post-data/{data}")
 def postData(data: str):
@@ -230,20 +229,26 @@ async def getUsers(type: Literal["admin", "doctor", "patient"], id: str):
 @app.post("/post-data")
 async def addData(user_id: str, data: Data):
     try:
+        # Save data to the database
         res = await db.postData(user_id=user_id, data=data)
         
-        # Convert the data to a JSON string
+        # Convert data to JSON string
         data_json = data.json()
 
-        # Iterate over each WebSocket in websocket_list
+        # Iterate over websocket_list to send data to the correct user
         for uid, websocket in websocket_list:
             if uid == user_id:
-                # Send the data only to the user who posted it
-                await websocket.send_text(data_json)
+                try:
+                    await websocket.send_text(data_json)
+                except Exception as e:
+                    # Handle specific WebSocket errors here, e.g., connection closed
+                    print(f"Error sending data to user {user_id}: {str(e)}")
+                    # Optionally: Remove the WebSocket from the list if connection is closed
+                    websocket_list.remove((uid, websocket))
 
         return {"dataCreated": res}
     except Exception as e:
-        print(e)
+        print(f"Error processing request: {str(e)}")
         return {"error": str(e)}
 
 @app.put("/put-data")
