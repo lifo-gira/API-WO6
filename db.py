@@ -93,12 +93,15 @@ async def postData(user_id: str, data: Data):
         # Data object will have default values for created_date and created_time in IST
         await metrics.insert_one(data.dict())  # Convert data object to dictionary
 
+        # Update user document with data_id
         res = await users.find_one({"user_id": user_id, "type": "patient"})
-        res = dict(res)
-        res["data"].append(data.data_id)
-        
-        await users.update_one({"user_id": user_id, "type": "patient"}, {"$set": res})
-        return True
+        if res:
+            data_id = data.data_id  # Assuming data_id is a unique identifier
+            res["data"].append(data_id)
+            await users.update_one({"user_id": user_id, "type": "patient"}, {"$set": {"data": res["data"]}})
+            return True
+        else:
+            return False
     except Exception as e:
         print(e)
         return False

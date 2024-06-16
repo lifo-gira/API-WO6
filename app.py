@@ -212,28 +212,39 @@ async def getUsers(type: Literal["admin", "doctor", "patient"], id: str):
     res = await db.getUser(type, id)
     return res
 
+# @app.post("/post-data")
+# async def addData(user_id: str, data: Data):
+#     res = await db.postData(user_id=user_id, data=data)
+    
+#     # Convert the data to a JSON string
+#     data_json = json.dumps(data.dict())
+
+#     # Iterate over each WebSocket in websocket_list
+#     for uid, websocket in websocket_list:
+#         if uid == user_id:
+#             # Send the data only to the user who posted it
+#             await websocket.send_text(data_json)
+
+#     return {"dataCreated": res}
+
 @app.post("/post-data")
 async def addData(user_id: str, data: Data):
-    res = await db.postData(user_id=user_id, data=data)
-    
-    # Convert the data to a JSON string
-    data_json = json.dumps(data.dict())
+    try:
+        res = await db.postData(user_id=user_id, data=data)
+        
+        # Convert the data to a JSON string
+        data_json = data.json()
 
-    # Iterate over each WebSocket in websocket_list
-    for uid, websocket in websocket_list:
-        if uid == user_id:
-            # Send the data only to the user who posted it
-            await websocket.send_text(data_json)
+        # Iterate over each WebSocket in websocket_list
+        for uid, websocket in websocket_list:
+            if uid == user_id:
+                # Send the data only to the user who posted it
+                await websocket.send_text(data_json)
 
-    return {"dataCreated": res}
-
-# @app.post("/post-data")
-# async def addData(user_id: str,data: Data):
-#     res = await db.postData(user_id=user_id, data=data)
-#     for web in websocket_list:
-#         data_json = json.dumps(data.dict())
-#         await web.send_text(data_json)
-#         return{"dataCreated": res}
+        return {"dataCreated": res}
+    except Exception as e:
+        print(e)
+        return {"error": str(e)}
 
 @app.put("/put-data")
 async def addData( data: Data):
