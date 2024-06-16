@@ -20,12 +20,12 @@ from typing import Dict, List
 app = FastAPI()
 manager = ConnectionManager()
 
-storedData = {}
-websocket_list: Dict[str, WebSocket] = {}
-websocket_connections = {}
-message_queues: Dict[str, asyncio.Queue] = {}
-pending_messages: Dict[str, List[str]] = {}
-lock = asyncio.Lock()
+storedData = []
+websocket_list = []
+websocket_connections = []
+# message_queues: Dict[str, asyncio.Queue] = {}
+# pending_messages: Dict[str, List[str]] = {}
+# lock = asyncio.Lock()
 
 app.add_middleware(
     CORSMiddleware,
@@ -97,70 +97,24 @@ def root():
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await websocket.accept()
-    async with lock:
-        websocket_list[user_id] = websocket
-        if user_id in pending_messages:
-            for message in pending_messages[user_id]:
-                await send_message(websocket, message)
-            pending_messages.pop(user_id, None)
-
-    print(f"User {user_id} connected")
-
-    message_queue = asyncio.Queue()
-    async with lock:
-        message_queues[user_id] = message_queue
+    websocket_list.append((user_id, websocket))
 
     try:
         while True:
             data = await websocket.receive_text()
-            await message_queue.put(data)
-            await process_message_queue(user_id, message_queue)
-    except WebSocketDisconnect:
-        print(f"User {user_id} disconnected")
+            await broadcast_message(user_id, f"You sent: {data}")
     except Exception as e:
         print(f"WebSocket error for user {user_id}: {e}")
     finally:
-        await remove_websocket(user_id)
+        remove_websocket(user_id, websocket)
 
-async def process_message_queue(user_id: str, queue: asyncio.Queue):
-    while not queue.empty():
-        message = await queue.get()
-        await broadcast_message(user_id, f"You sent: {message}")
+async def broadcast_message(sender_user_id, message):
+    for user_id, ws in websocket_list:
+        if user_id != sender_user_id:
+            await ws.send_text(message)
 
-async def broadcast_message(sender_user_id: str, message: str):
-    async with lock:
-        send_tasks = []
-        for user_id, ws in websocket_list.items():
-            if user_id != sender_user_id:
-                send_tasks.append(send_message_with_ack(user_id, ws, message))
-        await asyncio.gather(*send_tasks, return_exceptions=True)
-
-async def send_message_with_ack(user_id: str, websocket: WebSocket, message: str):
-    try:
-        await websocket.send_text(message)
-        # Simulate an acknowledgment mechanism using message_id
-        # For example, the client sends back "ACK:message_id" which could be parsed and validated here
-        # However, here we assume messages are acknowledged in the next receive cycle
-    except Exception as e:
-        print(f"Error sending message to user {user_id}: {e}")
-        async with lock:
-            if user_id not in pending_messages:
-                pending_messages[user_id] = []
-            pending_messages[user_id].append(message)
-
-async def send_message(websocket: WebSocket, message: str):
-    try:
-        await websocket.send_text(message)
-    except Exception as e:
-        print(f"Error sending message to websocket: {e}")
-
-async def remove_websocket(user_id: str):
-    async with lock:
-        if user_id in websocket_list:
-            websocket_list.pop(user_id, None)
-        if user_id in message_queues:
-            message_queues.pop(user_id, None)
-        print(f"User {user_id} removed")
+def remove_websocket(user_id, websocket):
+    websocket_list.remove((user_id, websocket))
 
 @app.post("/post-data/{data}")
 def postData(data: str):
@@ -260,27 +214,16 @@ async def getUsers(type: Literal["admin", "doctor", "patient"], id: str):
 
 @app.post("/post-data")
 async def addData(user_id: str, data: Data):
-    # Simulate data storage operation
-    try:
-        res = await db.postData(user_id=user_id, data=data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error storing data: {e}")
-
-    # Convert the data to a JSON string once
+    res = await db.postData(user_id=user_id, data=data)
+    
+    # Convert the data to a JSON string
     data_json = json.dumps(data.dict())
 
-    async with lock:
-        websocket = websocket_list.get(user_id)
-        if websocket:
-            try:
-                await send_message_with_ack(user_id, websocket, data_json)
-            except Exception as e:
-                print(f"Error sending data to user {user_id}: {e}")
-        else:
-            # Store the message if the user is not currently connected
-            if user_id not in pending_messages:
-                pending_messages[user_id] = []
-            pending_messages[user_id].append(data_json)
+    # Iterate over each WebSocket in websocket_list
+    for uid, websocket in websocket_list:
+        if uid == user_id:
+            # Send the data only to the user who posted it
+            await websocket.send_text(data_json)
 
     return {"dataCreated": res}
 
