@@ -6,7 +6,7 @@ from models import *
 # mongodb+srv://wadfirm2023:wadfirm2023@wadco.o2m22gs.mongodb.net/?retryWrites=true&w=majority ---main
 # mongodb+srv://wadfirm2023:wadfirm2023@cluster3.oms3a1o.mongodb.net/?retryWrites=true&w=majority ---testing
 
-client = motor_asyncio.AsyncIOMotorClient("mongodb+srv://wadfirm2023:wadfirm2023@cluster3.oms3a1o.mongodb.net/?retryWrites=true&w=majority")
+client = motor_asyncio.AsyncIOMotorClient("mongodb+srv://wadfirm2023:wadfirm2023@wadco.o2m22gs.mongodb.net/?retryWrites=true&w=majority")
 db = client.Main
 users = db.users
 metrics = db.metrics
