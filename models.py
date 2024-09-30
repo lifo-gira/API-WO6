@@ -25,6 +25,7 @@ class Admin(BaseModel):
 class Doctor(BaseModel):
     id: str = Field(..., alias="_id")
     type: Literal["admin", "doctor", "patient"]
+    email: str 
     name: str
     user_id: str
     password: str
@@ -37,6 +38,7 @@ class Doctor(BaseModel):
                 "name": "doctor 1",
                 "user_id": "doctor001",
                 "password": "Password@123",
+                "email": "patient1@example.com", 
                 "patients": ["13234", "341324"]
             }
         }
@@ -47,19 +49,19 @@ class Patient(BaseModel):
     name: str
     user_id: str
     password: str
-    data: list
-    videos: list
+    email: str 
+    data: List[str]
+    videos: List[str]
     doctor: str
-
-
 
     class Config:
         schema_extra = {
             "example": {
                 "type": "patient",
-                "name": "patien 1",
+                "name": "patient 1",
                 "user_id": "patient001",
                 "password": "Password@123",
+                "email": "patient1@example.com", 
                 "data": ["data1", "data2"],
                 "videos": [],
                 "doctor": "doctor001",
@@ -106,6 +108,7 @@ class PatientInformation(BaseModel):
     _id: str
     user_id: str
     patient_id: str
+    email: str
     doctor_id: str
     profession: str
     PersonalDetails: PersonalDetails
@@ -123,6 +126,7 @@ class PatientInformation(BaseModel):
                 "patient_id": "",
                 "doctor_id": "",
                 "profession": "",
+                "email": "patient@example.com",
                 "PersonalDetails": {
                     "categories": ["Category1", "Category2"],
                     "healthcheckup": {
