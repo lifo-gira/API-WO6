@@ -108,7 +108,6 @@ class PatientInformation(BaseModel):
     _id: str
     user_id: str
     patient_id: str
-    email: str
     doctor_id: str
     profession: str
     PersonalDetails: PersonalDetails
@@ -126,7 +125,6 @@ class PatientInformation(BaseModel):
                 "patient_id": "",
                 "doctor_id": "",
                 "profession": "",
-                "email": "patient@example.com",
                 "PersonalDetails": {
                     "categories": ["Category1", "Category2"],
                     "healthcheckup": {
