@@ -1,9 +1,9 @@
 from fastapi import FastAPI, WebSocket, HTTPException, Request, Depends, WebSocketDisconnect
 from typing import Literal, Optional, List
 from fastapi.middleware.cors import CORSMiddleware
-from models import Admin, Doctor, Patient, Data
+from models import Admin, AssessmentModel, Doctor, Patient, Data, RecoveryModel
 import db
-from models import ConnectionManager, WebSocketManager, GoogleOAuthCallback,DeleteRequest,PatientInformation, ExercisesGiven, Exercises
+from models import ConnectionManager, WebSocketManager, GoogleOAuthCallback,DeleteRequest,PatientInformation
 from db import get_user_from_db,metrics,deleteData,patients, users, rooms_collection, signaling_collection
 import json
 from fastapi.responses import RedirectResponse
@@ -341,65 +341,78 @@ async def create_patient_info(patient_info: PatientInformation):
 
     raise HTTPException(status_code=500, detail="Failed to create patient information")
 
-@app.put("/update-exercise-info/{patient_id}/{new_flag}")
-async def update_exercise_info(patient_id: str, exercise_data: Exercises, new_flag: int):
-    # Check if a document with the specified user_id exists
-    existing_patient = await patients.find_one({"patient_id": patient_id})
-    if not existing_patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
-
-    # Update the exercise information
-    result = await patients.update_one(
-        {"patient_id": patient_id},
-        {"$set": {
-            "Exercises": exercise_data.dict(),
-            "flag": new_flag
-        }}
-    )
-
-    if result.modified_count > 0:
-        # Fetch the updated item from the database
-        updated_todo = await patients.find_one({"patient_id": patient_id})
-
-        # If the flag is in the range 1 to 5, send the entire updated_todo data through the WebSocket
-        if new_flag in range(-2,6):
-            await send_websocket_message(json_util.dumps(updated_todo, default=json_util.default))
-        
-        return {"message": "Exercise information updated successfully"}
-
-    raise HTTPException(status_code=500, detail="Failed to update exercise information")
-
-async def send_websocket_message(message: str):
-    for websocket in websocket_connections:
-        await websocket.send_text(message)
-
-@app.put("/update_given_exercise_info/{patient_id}/{new_flag}")
-async def update_given_exercise_info(patient_id: str, exercise_data: ExercisesGiven, new_flag: int):
+@app.put("/update-assessment-info/{patient_id}/{new_flag}")
+async def update_assessment_info(patient_id: str, assessment_data: List[AssessmentModel], new_flag: int):
     # Check if a document with the specified patient_id exists
     existing_patient = await patients.find_one({"patient_id": patient_id})
     if not existing_patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    # Update the exercise information and flag
+    # Retrieve existing assessments
+    existing_assessments = existing_patient.get("Assessment", [])
+
+    # Add new assessments to the existing ones
+    updated_assessments = existing_assessments + [assessment.dict() for assessment in assessment_data]
+
+    # Update the Assessment field and the flag
     result = await patients.update_one(
         {"patient_id": patient_id},
         {"$set": {
-            "exercises_given": exercise_data.dict(),
+            "Assessment": updated_assessments,
             "flag": new_flag
         }}
     )
 
     if result.modified_count > 0:
         # Fetch the updated item from the database
-        updated_todo = await patients.find_one({"patient_id": patient_id})
+        updated_patient = await patients.find_one({"patient_id": patient_id})
 
-        # If the flag is in the range 1 to 5, send the entire updated_todo data through the WebSocket
-        if new_flag in range(-2,6):
-            await send_websocket_message(json_util.dumps(updated_todo, default=json_util.default))
+        # If the flag is in the range 1 to 5, send the entire updated_patient data through the WebSocket
+        if new_flag in range(-2, 6):
+            await send_websocket_message(json_util.dumps(updated_patient, default=json_util.default))
         
-        return {"message": "Exercise information updated successfully"}
+        return {"message": "Assessment information updated successfully"}
 
-    raise HTTPException(status_code=500, detail="Failed to update exercise information")
+    raise HTTPException(status_code=500, detail="Failed to update assessment information")
+
+async def send_websocket_message(message: str):
+    for websocket in websocket_connections:
+        await websocket.send_text(message)
+
+@app.put("/update-recovery-info/{patient_id}/{new_flag}")
+async def update_recovery_info(patient_id: str, recovery_data: RecoveryModel, new_flag: int):
+    # Check if a document with the specified patient_id exists
+    existing_patient = await patients.find_one({"patient_id": patient_id})
+
+    if not existing_patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    # Retrieve the existing exercises from the patient record
+    existing_recovery = existing_patient.get("Model_Recovery", [])
+
+    # Append the new recovery data
+    existing_recovery.append(recovery_data.dict())
+
+    # Update the Model_Recovery field and the flag
+    result = await patients.update_one(
+        {"patient_id": patient_id},
+        {"$set": {
+            "Model_Recovery": existing_recovery,
+            "flag": new_flag
+        }}
+    )
+
+    if result.modified_count > 0:
+        updated_patient = await patients.find_one({"patient_id": patient_id})
+
+        # If the flag is in the range 1 to 5, send the updated patient data through the WebSocket
+        if new_flag in range(-2, 6):
+            await send_websocket_message(json_util.dumps(updated_patient, default=json_util.default))
+        
+        return {"message": "Recovery information updated successfully"}
+
+    raise HTTPException(status_code=500, detail="Failed to update recovery information")
+
 
 async def send_websocket_message(message: str):
     for websocket in websocket_connections:
