@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, HTTPException, Request, Depends, WebSocketDisconnect
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, Union
 from fastapi.middleware.cors import CORSMiddleware
 from models import Admin, AssessmentModel, Doctor, Patient, Data, RecoveryModel
 import db
@@ -206,19 +206,28 @@ async def createPatient(data: Patient):
     res = await db.createPatient(data=data)
     return{"userCreated": res}
     
-@app.get("/patients/{email}", response_model=Patient)
-async def get_patient(email: str):
-    # Retrieve patient data from the users collection
-    patient_data = await users.find_one({"email": email})
-    if patient_data is None:
-        raise HTTPException(status_code=404, detail="Patient not found")
+User = Union[Doctor, Patient]
+
+@app.get("/users/{email}", response_model=User)
+async def get_user(email: str):
+    # Retrieve user data from the users collection
+    user_data = await users.find_one({"email": email})
+    if user_data is None:
+        raise HTTPException(status_code=404, detail="User not found")
     
     # Convert ObjectId to string for _id
-    patient_data["_id"] = str(patient_data["_id"])  # Convert ObjectId to string
+    user_data["_id"] = str(user_data["_id"])  # Convert ObjectId to string
 
-    # Convert MongoDB document to Patient model
-    patient = Patient(**patient_data)
-    return patient
+    # Check the type and return the appropriate model
+    user_type = user_data.get("type")
+    if user_type == "doctor":
+        user = Doctor(**user_data)
+    elif user_type == "patient":
+        user = Patient(**user_data)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid user type")
+    
+    return user
 
 @app.post("/google-login")
 async def google_login(data: GoogleOAuthCallback):
