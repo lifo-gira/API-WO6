@@ -84,7 +84,8 @@ class AssessmentExercise(BaseModel):
     velocity: int
 
 class AssessmentModel(BaseModel):
-    exercises: Dict[str, AssessmentExercise]
+    assessments: List[AssessmentExercise]
+
 
 class RecoveryModel(BaseModel):
     Title: str
@@ -138,26 +139,28 @@ class PatientInformation(BaseModel):
                     "Age": 22,
                     "DOB": "07/12/2001"
                 },
-                "Assessment": [
-                    {
-                        "exercises": {
-                            "running": {"values": [5.0, 6.0, 7.0], "pain": ["None", "Minimal", "Moderate"], "rom": 90, "velocity": 50},
-                            "pushups": {"values": [], "pain": [], "rom": 50, "velocity": 50},
-                            "squats": {"values": [], "pain": [], "rom": 50, "velocity": 50},
-                            "pullups": {"values": [], "pain": [], "rom": 50, "velocity": 50},
-                            "LegHipRotation": {"values": [], "pain": [], "rom": 50, "velocity": 50}
-                        }
+                "Assessment": {
+                        "assessments": [
+                            {
+                                "exercises": {
+                                    "running": {"values": [5.0, 6.0, 7.0], "pain": ["None", "Minimal", "Moderate"], "rom": 90, "velocity": 50},
+                                    "pushups": {"values": [], "pain": [], "rom": 50, "velocity": 50},
+                                    "squats": {"values": [], "pain": [], "rom": 50, "velocity": 50},
+                                    "pullups": {"values": [], "pain": [], "rom": 50, "velocity": 50},
+                                    "LegHipRotation": {"values": [], "pain": [], "rom": 50, "velocity": 50}
+                                }
+                            },
+                            {
+                                "exercises": {
+                                    "running": {"values": [5.0, 6.0, 7.0], "pain": ["None", "Minimal", "Moderate"], "rom": 90, "velocity": 50},
+                                    "pushups": {"values": [], "pain": [], "rom": 50, "velocity": 50},
+                                    "squats": {"values": [], "pain": [], "rom": 50, "velocity": 50},
+                                    "pullups": {"values": [], "pain": [], "rom": 50, "velocity": 50},
+                                    "LegHipRotation": {"values": [], "pain": [], "rom": 50, "velocity": 50}
+                                }
+                            }
+                        ]
                     },
-                    {
-                       "exercises": {
-                            "running": {"values": [5.0, 6.0, 7.0], "pain": ["None", "Minimal", "Moderate"], "rom": 90, "velocity": 50},
-                            "pushups": {"values": [], "pain": [], "rom": 50, "velocity": 50},
-                            "squats": {"values": [], "pain": [], "rom": 50, "velocity": 50},
-                            "pullups": {"values": [], "pain": [], "rom": 50, "velocity": 50},
-                            "LegHipRotation": {"values": [], "pain": [], "rom": 50, "velocity": 50}
-                        }
-                    }
-                ],
                 "Model_Recovery": [
                     {
                         "Title": "Title",
