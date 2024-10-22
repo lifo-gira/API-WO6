@@ -380,7 +380,12 @@ async def update_assessment_info(patient_id: str, assessment_data: List[Assessme
         if new_flag in range(-2, 6):
             await send_websocket_message(json_util.dumps(updated_patient, default=json_util.default))
         
-        return {"message": "Assessment information updated successfully"}
+        return [
+    {
+        "message": "Assessment information updated successfully"
+    }
+]
+
 
     raise HTTPException(status_code=500, detail="Failed to update assessment information")
 
@@ -418,7 +423,12 @@ async def update_recovery_info(patient_id: str, recovery_data: RecoveryModel, ne
         if new_flag in range(-2, 6):
             await send_websocket_message(json_util.dumps(updated_patient, default=json_util.default))
         
-        return {"message": "Recovery information updated successfully"}
+        return [
+    {
+        "message": "Recovery information updated successfully"
+    }
+]
+
 
     raise HTTPException(status_code=500, detail="Failed to update recovery information")
 
