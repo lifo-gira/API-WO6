@@ -111,7 +111,7 @@ class PatientInformation(BaseModel):
     doctor_id: str
     profession: str
     PersonalDetails: PersonalDetails
-    Assessment: List[AssessmentModel]
+    Assessment: AssessmentModel
     Model_Recovery: List[RecoveryModel]
     exercise_tracker: int
     events_date: List[str]
