@@ -1,7 +1,7 @@
 from fastapi import FastAPI, WebSocket, HTTPException, Request, Depends, WebSocketDisconnect
 from typing import Literal, Optional, List, Union
 from fastapi.middleware.cors import CORSMiddleware
-from models import Admin, AssessmentModel, Doctor, Patient, Data, RecoveryModel
+from models import Admin, AssessmentModel, Doctor, ExerciseAssigned, Patient, Data, RecoveryModel
 import db
 from models import ConnectionManager, WebSocketManager, GoogleOAuthCallback,DeleteRequest,PatientInformation
 from db import get_user_from_db,metrics,deleteData,patients, users, rooms_collection, signaling_collection
@@ -436,6 +436,26 @@ async def update_recovery_info(patient_id: str, recovery_data: RecoveryModel, ne
 async def send_websocket_message(message: str):
     for websocket in websocket_connections:
         await websocket.send_text(message)
+
+@app.put("/patients/{patient_id}/add-exercise-assigned")
+async def add_empty_exercise_assigned(patient_id: str, exercises: Dict[str, ExerciseAssigned]):
+    # Find the patient document by patient_id
+    patient = await patients.find_one({"patient_id": patient_id})  # Use await here
+    
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    
+    # Prepare the new Exercise_Assigned dictionary
+    new_exercise_assigned = {key: value.dict() for key, value in exercises.items()}  # Convert Pydantic models to dict
+    
+    # Update the document to add Exercise_Assigned
+    await patients.update_one(
+        {"patient_id": patient_id},
+        {"$set": {"Exercise_Assigned": new_exercise_assigned}}  # Use the dictionary here
+    )
+
+    # Convert MongoDB document to a dictionary before returning
+    return {"message": "New Exercises added successfully"}
 
 @app.put("/update_flag/{patient_id}/{new_flag}/{doctor_name}/{doctor_id}/{schedule_start_date}/{meeting_id}")
 async def update_flag(patient_id: str, new_flag: int, doctor_name: str, doctor_id: str, schedule_start_date: str,meeting_id: str):

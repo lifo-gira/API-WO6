@@ -92,6 +92,10 @@ class RecoveryModel(BaseModel):
     Exercise: Dict[str, ModelExercise]
     pain_scale: int
 
+class ExerciseAssigned(BaseModel):
+    sets: int
+    reps: int
+
 class PersonalDetails(BaseModel):
     DORegn: str
     Accident: str
@@ -113,6 +117,7 @@ class PatientInformation(BaseModel):
     PersonalDetails: PersonalDetails
     Assessment: List[AssessmentModel]
     Model_Recovery: List[RecoveryModel]
+    Exercise_Assigned: Dict[str, ExerciseAssigned]
     exercise_tracker: int
     events_date: List[str]
     PDF: List[str]
@@ -150,7 +155,7 @@ class PatientInformation(BaseModel):
                         }
                     },
                     {
-                       "exercises": {
+                        "exercises": {
                             "running": {"values": [5.0, 6.0, 7.0], "pain": ["None", "Minimal", "Moderate"], "rom": 90, "velocity": 50},
                             "pushups": {"values": [], "pain": [], "rom": 50, "velocity": 50},
                             "squats": {"values": [], "pain": [], "rom": 50, "velocity": 50},
@@ -183,6 +188,13 @@ class PatientInformation(BaseModel):
                         "pain_scale": 5
                     }
                 ],
+                "Exercise_Assigned": {
+                    "running": {"sets": 3, "reps": 12},
+                    "pushups": {"sets": 4, "reps": 10},
+                    "squats": {"sets": 4, "reps": 15},
+                    "pullups": {"sets": 3, "reps": 8},
+                    "LegHipRotation": {"sets": 3, "reps": 10}
+                },
                 "exercise_tracker": 1,
                 "events_date": ["2024-02-10", "2024-03-10"],
                 "PDF": ["path/to/patient_file.pdf", "path/to/patient_file.pdf"],
@@ -190,6 +202,7 @@ class PatientInformation(BaseModel):
                 "flag": 0
             }
         }
+
 
 class GoogleOAuthCallback(BaseModel):
     type: Literal["admin", "doctor", "patient"]
