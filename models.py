@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket
 from pydantic import BaseModel, EmailStr, Field, HttpUrl, validator, conint, confloat
-from typing import Literal, Optional, List, Dict
+from typing import Literal, Optional, List, Dict, Any
 from datetime import datetime
 import pytz
 from bson import ObjectId
@@ -77,14 +77,8 @@ class ModelExercise(BaseModel):
     velocity: int
     progress: str
 
-class AssessmentExercise(BaseModel):
-    values: List[float]
-    pain: List[str]
-    rom: int
-    velocity: int
-
 class AssessmentModel(BaseModel):
-    exercises: Dict[str, AssessmentExercise]
+    exercises: Dict[str,List]
 
 
 class RecoveryModel(BaseModel):
@@ -113,6 +107,7 @@ class PatientInformation(BaseModel):
     unique_id: str
     patient_id: str
     doctor_id: str
+    therapist_id: str
     profession: str
     PersonalDetails: PersonalDetails
     Assessment: List[AssessmentModel]
@@ -122,6 +117,7 @@ class PatientInformation(BaseModel):
     events_date: List[str]
     PDF: List[str]
     doctor_assigned: str
+    therapist_assigned: str
     flag: int
 
     class Config:
@@ -131,6 +127,7 @@ class PatientInformation(BaseModel):
                 "unique_id": "WAD123",
                 "patient_id": "",
                 "doctor_id": "",
+                "therapist_id": "",
                 "profession": "",
                 "PersonalDetails": {
                     "DORegn": "2024-02-03",
@@ -198,7 +195,8 @@ class PatientInformation(BaseModel):
                 "exercise_tracker": 1,
                 "events_date": ["2024-02-10", "2024-03-10"],
                 "PDF": ["path/to/patient_file.pdf", "path/to/patient_file.pdf"],
-                "doctor_assigned": "DoctorName",
+                "doctor_assigned": "Not Assigned",
+                "therapist_assigned": "Not Assigned",
                 "flag": 0
             }
         }
