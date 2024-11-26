@@ -6,8 +6,7 @@ import pytz
 from bson import ObjectId
 
 class Admin(BaseModel):
-    id: str = Field(..., alias="_id")
-    type: Literal["admin", "doctor", "patient"]
+    type: Literal["admin"]
     name: str
     user_id: str
     password: str
@@ -23,8 +22,7 @@ class Admin(BaseModel):
         }
 
 class Doctor(BaseModel):
-    id: str = Field(..., alias="_id")
-    type: Literal["admin", "doctor", "patient"]
+    type: Literal["doctor"]
     email: str 
     name: str
     user_id: str
@@ -43,9 +41,28 @@ class Doctor(BaseModel):
             }
         }
 
+class Nurse(BaseModel):
+    type: Literal["nurse"]
+    email: str 
+    name: str
+    user_id: str
+    password: str
+    patients: list  
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "type": "nurse",
+                "name": "nurse 1",
+                "user_id": "nurse001",
+                "password": "Password@123",
+                "email": "patient1@example.com", 
+                "patients": ["13234", "341324"]
+            }
+        }
+
 class Patient(BaseModel):
-    id: str = Field(..., alias="_id")
-    type: Literal["admin", "doctor", "patient"]
+    type: Literal["patient"]
     name: str
     user_id: str
     password: str
@@ -64,7 +81,7 @@ class Patient(BaseModel):
                 "email": "patient1@example.com", 
                 "data": ["data1", "data2"],
                 "videos": [],
-                "doctor": "doctor001",
+                "doctor": "No doctor assigned",
             }
         }
 
@@ -106,18 +123,18 @@ class PatientInformation(BaseModel):
     user_id: str
     unique_id: str
     patient_id: str
-    doctor_id: str
-    therapist_id: str
-    profession: str
-    PersonalDetails: PersonalDetails
-    Assessment: List[AssessmentModel]
-    Model_Recovery: List[RecoveryModel]
-    Exercise_Assigned: Dict[str, ExerciseAssigned]
-    exercise_tracker: int
-    events_date: List[str]
-    PDF: List[str]
-    doctor_assigned: str
-    therapist_assigned: str
+    doctor_id: Optional[str] = None
+    therapist_id: Optional[str] = None
+    profession: Optional[str] = None
+    PersonalDetails: Optional[PersonalDetails] = None  # type: ignore
+    Assessment: Optional[List[AssessmentModel]] = None
+    Model_Recovery: Optional[List[RecoveryModel]] = None
+    Exercise_Assigned: Optional[Dict[str, ExerciseAssigned]] = None
+    exercise_tracker: Optional[int] = None
+    events_date: Optional[List[str]] = None
+    PDF: Optional[List[str]] = None
+    doctor_assigned: Optional[str] = None
+    therapist_assigned: Optional[str] = None
     flag: int
 
     class Config:
@@ -203,7 +220,7 @@ class PatientInformation(BaseModel):
 
 
 class GoogleOAuthCallback(BaseModel):
-    type: Literal["admin", "doctor", "patient"]
+    type: Literal["admin", "doctor", "patient","nurse"]
     name: str
     email: EmailStr
     user_id: str

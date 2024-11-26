@@ -1,7 +1,7 @@
 from fastapi import FastAPI, WebSocket, HTTPException, Request, Depends, WebSocketDisconnect
 from typing import Literal, Optional, List, Union
 from fastapi.middleware.cors import CORSMiddleware
-from models import Admin, AssessmentModel, Doctor, ExerciseAssigned, Patient, Data, RecoveryModel
+from models import Admin, AssessmentModel, Doctor, ExerciseAssigned, Nurse, Patient, Data, RecoveryModel
 import db
 from models import ConnectionManager, WebSocketManager, GoogleOAuthCallback,DeleteRequest,PatientInformation
 from db import get_user_from_db,metrics,deleteData,patients, users, rooms_collection, signaling_collection
@@ -201,10 +201,57 @@ async def createDoctor(data: Doctor):
     res = await db.createDoctor(data=data)
     return{"userCreated": res}
 
+@app.post("/create-nurse")
+async def createNurse(data: Nurse):
+    res = await db.createNurse(data=data)
+    return{"userCreated": res}
+
 @app.post("/create-patient")
 async def createPatient(data: Patient):
-    res = await db.createPatient(data=data)
-    return{"userCreated": res}
+    try:
+        # Convert Pydantic model to JSON-compatible dict
+        patient_dict = jsonable_encoder(data)
+
+        # Insert the patient into the users collection
+        result = await users.insert_one(patient_dict)
+
+        if result.inserted_id:
+            # Use the MongoDB-generated _id as the patient_id
+            patient_id = str(result.inserted_id)  # MongoDB _id is of type ObjectId
+            user_id = patient_dict["user_id"]
+
+            # Log user creation
+            print(f"User created successfully with patient_id: {patient_id}")
+
+            # Create a minimal PatientInformation entry
+            patient_info = {
+                "user_id": user_id,
+                "patient_id": patient_id,
+                "flag": -3
+            }
+
+            # Insert the minimal PatientInformation entry into the patients collection
+            patient_info_result = await patients.insert_one(patient_info)
+
+            if patient_info_result.inserted_id:
+                # Log PatientInformation creation
+                print(f"PatientInformation created successfully with ID: {str(patient_info_result.inserted_id)}")
+                return {"message": "Patient and PatientInformation created successfully"}
+
+            # Log insertion failure
+            print("Failed to insert PatientInformation into the patients collection")
+            raise HTTPException(status_code=500, detail="Failed to create PatientInformation")
+
+    except Exception as e:
+        # Log the exception
+        print(f"An error occurred: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+    # Log user creation failure
+    print("Failed to insert user into the users collection")
+    raise HTTPException(status_code=500, detail="Failed to create patient")
+
+
     
 User = Union[Doctor, Patient]
 
@@ -325,30 +372,35 @@ async def getData(data_id: list):
     res = await db.getData(data_id)
     return res
 
-@app.post("/patient-info/")
-async def create_patient_info(patient_info: PatientInformation):
-    # Convert Pydantic model to JSON-compatible dict
-    patient_info_dict = jsonable_encoder(patient_info)
+from fastapi.encoders import jsonable_encoder
+from fastapi import HTTPException, Body
+from bson import ObjectId
 
-    # Check if a document with the same user_id already exists
-    existing_patient = await patients.find_one({"user_id": patient_info_dict["user_id"]})
-    if existing_patient:
-        raise HTTPException(status_code=400, detail="Patient with the same user_id already exists")
+@app.patch("/patient-info/{patient_id}")
+async def update_patient_info(patient_id: str, update_data: dict = Body(...)):
+    # Same logic for handling the patch
+    existing_patient = await patients.find_one({"patient_id": patient_id})
+    if not existing_patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
 
-    # Insert the data into MongoDB
-    result = await patients.insert_one(patient_info_dict)
+    update_data = jsonable_encoder(update_data)
 
-    if result.inserted_id:
-        # Convert ObjectId to string for JSON serialization
-        patient_info_dict["_id"] = str(patient_info_dict["_id"])
+    update_result = await patients.replace_one(
+        {"patient_id": patient_id},
+        update_data
+    )
 
-        # Notify clients about the new patient with JSON object
-        message = {"event": "new_patient", "data": patient_info_dict}
+    if update_result.modified_count > 0:
+        updated_patient = await patients.find_one({"patient_id": patient_id})
+        updated_patient["_id"] = str(updated_patient["_id"])
+
+        message = {"event": "update_patient", "data": updated_patient}
         await notify_clients(message)
 
-        return {"message": "Patient information created successfully"}
+        return {"message": "Patient information updated successfully", "data": updated_patient}
 
-    raise HTTPException(status_code=500, detail="Failed to create patient information")
+    raise HTTPException(status_code=500, detail="Failed to update patient information")
+
 
 @app.put("/update-assessment-info/{patient_id}/{new_flag}")
 async def update_assessment_info(patient_id: str, assessment_data: List[AssessmentModel], new_flag: int):

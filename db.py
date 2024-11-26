@@ -50,6 +50,13 @@ async def createDoctor(data: Doctor):
     except:
         return False
     
+async def createNurse(data: Nurse):
+    try:
+        await users.insert_one(dict(data))
+        return True
+    except:
+        return False
+    
 # async def createPatient(data: Patient):
 #     try:
 #         await users.insert_one(dict(data))
