@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, HTTPException, Request, Depends, WebSocketDisconnect
+from fastapi import Body, FastAPI, WebSocket, HTTPException, Request, Depends, WebSocketDisconnect
 from typing import Literal, Optional, List, Union
 from fastapi.middleware.cors import CORSMiddleware
 from models import Admin, AssessmentModel, Doctor, ExerciseAssigned, Nurse, Patient, Data, RecoveryModel
@@ -372,9 +372,30 @@ async def getData(data_id: list):
     res = await db.getData(data_id)
     return res
 
-from fastapi.encoders import jsonable_encoder
-from fastapi import HTTPException, Body
-from bson import ObjectId
+@app.post("/patient-info/")
+async def create_patient_info(patient_info: PatientInformation):
+    # Convert Pydantic model to JSON-compatible dict
+    patient_info_dict = jsonable_encoder(patient_info)
+
+    # Check if a document with the same user_id already exists
+    existing_patient = await patients.find_one({"user_id": patient_info_dict["user_id"]})
+    if existing_patient:
+        raise HTTPException(status_code=400, detail="Patient with the same user_id already exists")
+
+    # Insert the data into MongoDB
+    result = await patients.insert_one(patient_info_dict)
+
+    if result.inserted_id:
+        # Convert ObjectId to string for JSON serialization
+        patient_info_dict["_id"] = str(patient_info_dict["_id"])
+
+        # Notify clients about the new patient with JSON object
+        message = {"event": "new_patient", "data": patient_info_dict}
+        await notify_clients(message)
+
+        return {"message": "Patient information created successfully"}
+
+    raise HTTPException(status_code=500, detail="Failed to create patient information")
 
 @app.patch("/patient-info/{patient_id}")
 async def update_patient_info(patient_id: str, update_data: dict = Body(...)):
