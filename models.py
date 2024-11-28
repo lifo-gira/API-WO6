@@ -95,7 +95,7 @@ class ModelExercise(BaseModel):
     progress: str
 
 class AssessmentModel(BaseModel):
-    exercises: Dict[str,List]
+    exercises: Dict[str, Dict[str, List[List[float]]]]
 
 
 class RecoveryModel(BaseModel):
