@@ -206,6 +206,20 @@ async def createNurse(data: Nurse):
     res = await db.createNurse(data=data)
     return{"userCreated": res}
 
+@app.get("/patients/{email}", response_model=Patient)
+async def get_patient(email: str):
+    # Retrieve patient data from the users collection
+    patient_data = await users.find_one({"email": email})
+    if patient_data is None:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    
+    # Convert ObjectId to string for _id
+    patient_data["_id"] = str(patient_data["_id"])  # Convert ObjectId to string
+
+    # Convert MongoDB document to Patient model
+    patient = Patient(**patient_data)
+    return patient
+
 @app.post("/create-patient")
 async def createPatient(data: Patient):
     try:
