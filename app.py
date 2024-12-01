@@ -233,7 +233,8 @@ async def createPatient(data: Patient):
             # Use the MongoDB-generated _id as the patient_id
             patient_id = str(result.inserted_id)  # MongoDB _id is of type ObjectId
             user_id = patient_dict["user_id"]
-
+            therapist_id = patient_dict["therapist_id"]
+            therapist_assigned = patient_dict["therapist_assigned"]
             # Log user creation
             print(f"User created successfully with patient_id: {patient_id}")
 
@@ -241,6 +242,8 @@ async def createPatient(data: Patient):
             patient_info = {
                 "user_id": user_id,
                 "patient_id": patient_id,
+                "therapist_id": therapist_id,
+                "therapist_assigned" : therapist_assigned,
                 "flag": -3
             }
 

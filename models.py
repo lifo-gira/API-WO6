@@ -69,6 +69,9 @@ class Patient(BaseModel):
     email: str 
     data: List[str]
     videos: List[str]
+    therapist_assigned: str
+    therapist_id:str
+    doctor_id: str
     doctor: str
 
     class Config:
@@ -81,6 +84,9 @@ class Patient(BaseModel):
                 "email": "patient1@example.com", 
                 "data": ["data1", "data2"],
                 "videos": [],
+                "therapist_assigned" : "No therapist assigned",
+                "therapist_id": "",
+                "doctor_id": "",
                 "doctor": "No doctor assigned",
             }
         }
