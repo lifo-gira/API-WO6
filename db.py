@@ -18,20 +18,30 @@ async def getAllUser(type):
     try:
         allUsers = []
         if type == "all":
-            cursor = users.find({}, {'_id': 0})
+            cursor = users.find({})
         else:
-            cursor = users.find({"type": type}, {'_id': 0})
+            cursor = users.find({"type": type})
         
         async for document in cursor:
+            # Convert _id from ObjectId to string
+            document["_id"] = str(document["_id"])
             allUsers.append(document)
+    
     except Exception as e:
         print(e)
+    
     return allUsers
 
 async def getUser(type, id):
     try: 
-        res = await users.find_one({"user_id": id, "type": type},{'_id': 0})
-        return res
+        res = await users.find_one({"user_id": id, "type": type})
+        
+        if res:
+            # Ensure ObjectId is converted to string
+            res["_id"] = str(res["_id"])  # Convert ObjectId to string
+            return res
+        else:
+            return None
     except Exception as e:
         return None
 

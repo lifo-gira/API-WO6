@@ -6,6 +6,7 @@ import pytz
 from bson import ObjectId
 
 class Admin(BaseModel):
+    id: str = Field(..., alias="_id")
     type: Literal["admin"]
     name: str
     user_id: str
@@ -22,6 +23,7 @@ class Admin(BaseModel):
         }
 
 class Doctor(BaseModel):
+    id: str = Field(..., alias="_id")
     type: Literal["doctor"]
     email: str 
     name: str
@@ -42,6 +44,7 @@ class Doctor(BaseModel):
         }
 
 class Nurse(BaseModel):
+    id: str = Field(..., alias="_id")
     type: Literal["nurse"]
     email: str 
     name: str
@@ -62,6 +65,7 @@ class Nurse(BaseModel):
         }
 
 class Patient(BaseModel):
+    id: str = Field(..., alias="_id")
     type: Literal["patient"]
     name: str
     user_id: str

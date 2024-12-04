@@ -225,7 +225,8 @@ async def createPatient(data: Patient):
     try:
         # Convert Pydantic model to JSON-compatible dict
         patient_dict = jsonable_encoder(data)
-
+        patient_dict.pop("_id", None) 
+        
         # Insert the patient into the users collection
         result = await users.insert_one(patient_dict)
 
@@ -336,12 +337,12 @@ async def social_media_callback(request: Request, provider: str):
     return templates.TemplateResponse("social_media_callback.html", {"request": request, "user_info": user_info})
 
 @app.get("/get-all-user/{type}")
-async def getUsers(type: Literal["admin", "doctor", "patient", "all"]):
+async def getUsers(type: Literal["admin", "doctor", "patient","nurse"]):
     res = await db.getAllUser(type)
     return res
 
 @app.get("/get-user/{type}/{id}")
-async def getUsers(type: Literal["admin", "doctor", "patient"], id: str):
+async def getUsers(type: Literal["admin", "doctor", "patient","nurse"], id: str):
     res = await db.getUser(type, id)
     return res
 
@@ -545,34 +546,41 @@ async def add_empty_exercise_assigned(patient_id: str, exercises: Dict[str, Exer
     # Convert MongoDB document to a dictionary before returning
     return {"message": "New Exercises added successfully"}
 
-@app.put("/update_flag/{patient_id}/{new_flag}/{doctor_name}/{doctor_id}/{schedule_start_date}/{meeting_id}")
-async def update_flag(patient_id: str, new_flag: int, doctor_name: str, doctor_id: str, schedule_start_date: str,meeting_id: str):
-    # Fetch the item from the database using the provided item_id
+from bson import json_util
+from fastapi import HTTPException
+
+@app.put("/update_flag/{patient_id}/{new_flag}/{doctor_name}/{doctor_id}/{schedule_start_date}")
+async def update_flag(patient_id: str, new_flag: int, doctor_name: str, doctor_id: str, schedule_start_date: str):
+    # Fetch the item from the database using the provided patient_id
     todo = await patients.find_one({"patient_id": patient_id})
 
     # Check if the item exists
     if not todo:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    # Update only the "schedule_start_date" within the "health_tracker" field
+    # Append the new schedule_start_date to the events_date array
     await patients.update_one(
         {"patient_id": patient_id},
-        {"$set": {"flag": new_flag, 
-                  "doctor_assigned": doctor_name, 
-                  "doctor_id": doctor_id, 
-                  "health_tracker.schedule_start_date": schedule_start_date,
-                  "health_tracker.meeting_link": meeting_id}}
+        {
+            "$set": {
+                "flag": new_flag,
+                "doctor_assigned": doctor_name,
+                "doctor_id": doctor_id,
+            },
+            "$push": {"events_date": schedule_start_date},
+        }
     )
 
-    # Fetch the updated item from the database
+    # Fetch the updated document
     updated_todo = await patients.find_one({"patient_id": patient_id})
 
-    # If the flag is 1, send the entire updated_todo data through the WebSocket
-    if new_flag in range(-2,6):
-        await send_websocket_message(json_util.dumps(updated_todo, default=json_util.default))
+    # Use WebSocket to send the updated document if the flag is in the valid range
+    if new_flag in range(-2, 6):
+        await send_websocket_message(json_util.dumps(updated_todo))
 
-    # You can return the updated item if needed
+    # Return the updated document as JSON
     return "successful"
+
 
 @app.get("/patient-info/{patient_id}")
 async def get_patient_info(patient_id: str):
