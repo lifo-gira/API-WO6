@@ -221,30 +221,25 @@ async def get_patient(email: str):
     return patient
 
 @app.post("/create-patient")
-async def createPatient(data: Patient):
+async def create_patient(data: Patient):
     try:
-        # Convert Pydantic model to JSON-compatible dict
+        # Convert Pydantic model to a JSON-compatible dictionary
         patient_dict = jsonable_encoder(data)
-        patient_dict.pop("_id", None) 
         
+        # MongoDB automatically generates _id, so remove it from the request
+        patient_dict.pop("_id", None)
+
         # Insert the patient into the users collection
         result = await users.insert_one(patient_dict)
 
         if result.inserted_id:
-            # Use the MongoDB-generated _id as the patient_id
-            patient_id = str(result.inserted_id)  # MongoDB _id is of type ObjectId
-            user_id = patient_dict["user_id"]
-            therapist_id = patient_dict["therapist_id"]
-            therapist_assigned = patient_dict["therapist_assigned"]
-            # Log user creation
-            print(f"User created successfully with patient_id: {patient_id}")
-
+            patient_id = str(result.inserted_id)  # Get the MongoDB-generated _id as a string
             # Create a minimal PatientInformation entry
             patient_info = {
-                "user_id": user_id,
+                "user_id": patient_dict["user_id"],
                 "patient_id": patient_id,
-                "therapist_id": therapist_id,
-                "therapist_assigned" : therapist_assigned,
+                "therapist_id": patient_dict["therapist_id"],
+                "therapist_assigned": patient_dict["therapist_assigned"],
                 "flag": -3
             }
 
@@ -252,21 +247,16 @@ async def createPatient(data: Patient):
             patient_info_result = await patients.insert_one(patient_info)
 
             if patient_info_result.inserted_id:
-                # Log PatientInformation creation
-                print(f"PatientInformation created successfully with ID: {str(patient_info_result.inserted_id)}")
                 return {"message": "Patient and PatientInformation created successfully"}
-
-            # Log insertion failure
-            print("Failed to insert PatientInformation into the patients collection")
-            raise HTTPException(status_code=500, detail="Failed to create PatientInformation")
+            else:
+                raise HTTPException(status_code=500, detail="Failed to create PatientInformation")
 
     except Exception as e:
-        # Log the exception
+        # Log and handle the exception
         print(f"An error occurred: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
-    # Log user creation failure
-    print("Failed to insert user into the users collection")
+    # If insertion fails
     raise HTTPException(status_code=500, detail="Failed to create patient")
 
 
