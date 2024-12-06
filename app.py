@@ -536,6 +536,11 @@ async def add_empty_exercise_assigned(patient_id: str, exercises: Dict[str, Exer
             }
         }
     )
+
+    updated_todo = await patients.find_one({"patient_id": patient_id})
+
+    if new_flag in range(-2, 6):
+        await send_websocket_message(json_util.dumps(updated_todo))
     
     if update_result.modified_count == 0:
         raise HTTPException(status_code=400, detail="Failed to update the patient document")
