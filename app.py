@@ -516,25 +516,31 @@ async def send_websocket_message(message: str):
     for websocket in websocket_connections:
         await websocket.send_text(message)
 
-@app.put("/patients/{patient_id}/add-exercise-assigned")
-async def add_empty_exercise_assigned(patient_id: str, exercises: Dict[str, ExerciseAssigned]):
+@app.put("/patients/{patient_id}/{new_flag}/add-exercise-assigned")
+async def add_empty_exercise_assigned(patient_id: str, exercises: Dict[str, ExerciseAssigned], new_flag: int):
     # Find the patient document by patient_id
-    patient = await patients.find_one({"patient_id": patient_id})  # Use await here
-    
+    patient = await patients.find_one({"patient_id": patient_id})
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     
     # Prepare the new Exercise_Assigned dictionary
     new_exercise_assigned = {key: value.dict() for key, value in exercises.items()}  # Convert Pydantic models to dict
     
-    # Update the document to add Exercise_Assigned
-    await patients.update_one(
+    # Update the document to add Exercise_Assigned and update the flag
+    update_result = await patients.update_one(
         {"patient_id": patient_id},
-        {"$set": {"Exercise_Assigned": new_exercise_assigned}}  # Use the dictionary here
+        {
+            "$set": {
+                "Exercise_Assigned": new_exercise_assigned,
+                "flag": new_flag
+            }
+        }
     )
+    
+    if update_result.modified_count == 0:
+        raise HTTPException(status_code=400, detail="Failed to update the patient document")
 
-    # Convert MongoDB document to a dictionary before returning
-    return {"message": "New Exercises added successfully"}
+    return {"message": "New Exercises added and flag updated successfully"}
 
 from bson import json_util
 from fastapi import HTTPException
