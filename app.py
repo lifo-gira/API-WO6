@@ -22,7 +22,7 @@ manager = ConnectionManager()
 
 storedData = {}
 websocket_list: Dict[str, WebSocket] = {}
-websocket_connections = {}
+websocket_connections = []
 message_queues: Dict[str, asyncio.Queue] = {}
 pending_messages: Dict[str, List[str]] = {}
 lock = asyncio.Lock()
