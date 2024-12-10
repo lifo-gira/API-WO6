@@ -641,10 +641,6 @@ async def handle_websocket_data(websocket: WebSocket, data: str):
         _, item_id, new_flag, doctor_name = data.split("/")
         await update_flag(item_id, int(new_flag), doctor_name)
 
-    # For bidirectional communication, you can send data back to the client
-    bidirectional_data = {"message": "Hello from the server!"}
-    await websocket.send_text(json.dumps(bidirectional_data))
-
 async def update_flag(item_id: str, new_flag: int, doctor_name: str):
     # Implement your logic to update the flag in the database or perform other actions
     print(f"Updating flag for item {item_id} to {new_flag} by doctor {doctor_name}")
