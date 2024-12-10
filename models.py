@@ -101,6 +101,8 @@ class ModelExercise(BaseModel):
     rom: int
     rep: int
     set: int
+    assigned_rep: int
+    assigned_set: int
     velocity: int
     progress: str
 
@@ -132,6 +134,7 @@ class PersonalDetails(BaseModel):
 class PatientInformation(BaseModel):
     _id: str
     user_id: str
+    patient_name: Optional[str] = None
     unique_id: str
     patient_id: str
     doctor_id: Optional[str] = None
@@ -153,6 +156,7 @@ class PatientInformation(BaseModel):
             "example": {
                 "user_id": "",
                 "unique_id": "WAD123",
+                "patient_name" : "",
                 "patient_id": "",
                 "doctor_id": "",
                 "therapist_id": "",
