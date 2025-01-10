@@ -3,8 +3,8 @@ from typing import Literal, Optional, List, Union
 from fastapi.middleware.cors import CORSMiddleware
 from models import Admin, AssessmentModel, Doctor, ExerciseAssigned, Nurse, Patient, Data, RecoveryModel
 import db
-from models import ConnectionManager, WebSocketManager, GoogleOAuthCallback,DeleteRequest,PatientInformation
-from db import get_user_from_db,metrics,deleteData,patients, users, rooms_collection, signaling_collection
+from models import ConnectionManager, WebSocketManager, GoogleOAuthCallback,DeleteRequest,PatientInformation,DicomData 
+from db import get_user_from_db,metrics,deleteData,patients, users, rooms_collection, signaling_collection, dicom
 import json
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -671,6 +671,76 @@ async def get_flags(patient_id: str):
         return {"flags": flags}
     else:
         raise HTTPException(status_code=404, detail=f"Patient with ID {patient_id} not found")
+    
+@app.post("/add_dicom/{unique_id}")
+async def add_dicom(unique_id: str, dicom_data: DicomData):
+    try:
+        # Convert the incoming data into dictionary
+        dicom_entry = dicom_data.dict()
+        dicom_entry["date_time"] = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+
+        # Check if the document with the unique_id already exists
+        existing_document = await db.dicom.find_one({"unique_id": unique_id})
+
+        if existing_document:
+            # Append new entry to the data list, keeping only the last 5 entries
+            await db.dicom.update_one(
+                {"unique_id": unique_id},
+                {
+                    "$push": {
+                        "data": {"$each": [dicom_entry], "$slice": -5}
+                    }
+                },
+            )
+            # Fetch the updated document
+            updated_document = await db.dicom.find_one({"unique_id": unique_id})
+            updated_document["_id"] = str(updated_document["_id"])  # Convert ObjectId to string
+            return updated_document
+        else:
+            # Create a new document if it doesn't exist
+            new_document = {
+                "unique_id": unique_id,
+                "data": [dicom_entry],
+            }
+            result = await db.dicom.insert_one(new_document)
+            new_document["_id"] = str(result.inserted_id)
+            return new_document
+
+    except Exception as e:
+        # Return a 500 error with the exception message
+        raise HTTPException(status_code=500, detail=f"Error inserting data: {e}")
+    
+@app.get("/get_dicom/{unique_id}")
+async def get_dicom(unique_id: str):
+    try:
+        # Find the document by unique_id
+        document = await db.dicom.find_one({"unique_id": unique_id})
+        
+        if not document:
+            raise HTTPException(status_code=404, detail="DICOM data not found")
+        
+        # Convert ObjectId to string
+        document["_id"] = str(document["_id"])
+        return document
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching data: {e}")
+    
+@app.get("/unique_ids")
+async def get_all_patient_unique_ids():
+    try:
+        # Find all patient documents (no filter on empty unique_id for now)
+        patient_data = patients.find({}, {"unique_id": 1})
+
+        # Use async for to iterate over the cursor
+        unique_ids = []
+        async for patient in patient_data:
+            if "unique_id" in patient and patient["unique_id"]:  # Check if unique_id exists and is not empty
+                unique_ids.append({"unique_id": patient["unique_id"]})
+
+        return unique_ids
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving patient data: {e}")
 
 # @app.post("/doctor-patient-info/")
 # async def create_doctor_patient_info(patient_info: DoctorPatientInformation):

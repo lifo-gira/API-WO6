@@ -11,6 +11,7 @@ db = client.Main
 users = db.users
 metrics = db.metrics
 patients = db.patients
+dicom = db.dicom
 rooms_collection = db.rooms
 signaling_collection = db.signaling_messages
 
@@ -177,3 +178,4 @@ async def deleteData(request: DeleteRequest):
             return {"deleted": False, "error": "No matching documents found to delete"}
     except Exception as e:
         return {"deleted": False, "error": str(e)}
+    

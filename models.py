@@ -294,6 +294,35 @@ class Data(BaseModel):
                 "created_time": "14:30:00"
             }
         }
+class DicomData(BaseModel):
+    tibofemoral_angle: float
+    mad: float
+    hka: float
+    dicom_image: str
+    date_time: str = Field(
+        default_factory=lambda: datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+        readOnly=True,  # This marks the field as read-only in Swagger UI
+    )
+class Dicom(BaseModel):
+    unique_id: str
+    data: List[DicomData]
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "unique_id": "12345",
+                "data": [
+                    {
+                        "tibofemoral_angle": 5.2,
+                        "mad": 3.5,
+                        "hka": 10.0,
+                        "dicom_image": "image_path_or_url.jpg",
+                        "date_time": "10-01-2025",
+                    }
+                ]
+            }
+        }
+
 
 class WebSocketManager:
     def __init__(self):
