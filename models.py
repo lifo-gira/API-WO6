@@ -295,7 +295,7 @@ class Data(BaseModel):
             }
         }
 class DicomData(BaseModel):
-    values_stored: List[float]  # List of float values instead of individual fields
+    values_stored: List[str]  # List of float values instead of individual fields
     dicom_image: str
     date_time: str = Field(
         default_factory=lambda: datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
