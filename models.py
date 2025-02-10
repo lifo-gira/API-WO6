@@ -295,14 +295,13 @@ class Data(BaseModel):
             }
         }
 class DicomData(BaseModel):
-    tibofemoral_angle: float
-    mad: float
-    hka: float
+    values_stored: List[float]  # List of float values instead of individual fields
     dicom_image: str
     date_time: str = Field(
         default_factory=lambda: datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
         readOnly=True,  # This marks the field as read-only in Swagger UI
     )
+
 class Dicom(BaseModel):
     unique_id: str
     data: List[DicomData]
@@ -313,9 +312,7 @@ class Dicom(BaseModel):
                 "unique_id": "12345",
                 "data": [
                     {
-                        "tibofemoral_angle": 5.2,
-                        "mad": 3.5,
-                        "hka": 10.0,
+                        "values_stored": [5.2, 3.5, 10.0],  # List replacing separate fields
                         "dicom_image": "image_path_or_url.jpg",
                         "date_time": "10-01-2025",
                     }
